@@ -1,0 +1,6 @@
+{
+  "identityName": "12345ymd.Timeboard",
+  "publisher": "CN=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+  "publisherDisplayName": "ymd",
+  "note": "Copy values from Partner Center > Product identity after reserving Timeboard. Then update electron-builder.yml appx.* and rebuild."
+}

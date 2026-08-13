@@ -1,0 +1,45 @@
+{
+  "name": "windows-screentime",
+  "productName": "Timeboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-only Windows app usage time tracker (digital wellbeing). Not affiliated with Apple Screen Time.",
+  "license": "MIT",
+  "author": "ymd",
+  "homepage": "https://github.com/YMD-yamada/windows-screentime",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YMD-yamada/windows-screentime.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YMD-yamada/windows-screentime/issues"
+  },
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "node scripts/dev-electron.mjs",
+    "dev:web": "vite",
+    "build": "vite build",
+    "desktop": "node scripts/start-desktop.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "icons": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/make-icons.ps1",
+    "pack:win": "npm run build && npx --yes electron-builder --win nsis portable appx --config electron-builder.yml",
+    "pack:store": "npm run build && npx --yes electron-builder --win appx --config electron-builder.yml",
+    "postinstall": "node scripts/fix-rollup-wasm.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@rollup/wasm-node": "^4.62.2",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "electron": "^37.2.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.4"
+  },
+  "overrides": {
+    "rollup": "npm:@rollup/wasm-node@4.62.2"
+  }
+}

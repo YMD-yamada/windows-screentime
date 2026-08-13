@@ -1,0 +1,37 @@
+appId: jp.ymd.timeboard
+productName: Timeboard
+copyright: Copyright © 2026 ymd
+files:
+  - dist/**
+  - electron/**/*
+  - package.json
+directories:
+  output: release
+  buildResources: build
+extraMetadata:
+  homepage: https://github.com/YMD-yamada/windows-screentime
+win:
+  icon: build/icon.png
+  target:
+    - nsis
+    - portable
+    - appx
+  artifactName: Timeboard-${version}-${os}-${arch}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Timeboard
+  artifactName: Timeboard-${version}-${os}-${arch}-setup.${ext}
+portable:
+  artifactName: Timeboard-${version}-${os}-${arch}-portable.${ext}
+appx:
+  identityName: ymd.Timeboard
+  publisher: CN=ymd
+  publisherDisplayName: ymd
+  displayName: Timeboard
+  applicationId: Timeboard
+  languages:
+    - ja-JP
+    - en-US
+  showNameOnTiles: true
+  setBuildNumber: true
