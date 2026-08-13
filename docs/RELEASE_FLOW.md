@@ -31,7 +31,7 @@ npm run pack:win
 手順と掲載文: [STORE_LISTING.md](STORE_LISTING.md)  
 Identity 雛形: `store-identity.example.json`
 
-Partner Center の本人ログイン（初回は開発者登録料）が必要。Identity 反映後に APPX を再ビルドして提出する。
+Partner Center の本人ログインが必要。個人開発者は [storedeveloper.microsoft.com](https://storedeveloper.microsoft.com) から無料登録（ID＋自撮り）。Identity 反映後に APPX を再ビルドして提出する。
 
 ## 掲載
 

@@ -25,9 +25,9 @@ nsis:
 portable:
   artifactName: Timeboard-${version}-${os}-${arch}-portable.${ext}
 appx:
-  identityName: ymd.Timeboard
-  publisher: CN=ymd
-  publisherDisplayName: ymd
+  identityName: KentoYamada.Timeboard
+  publisher: CN=2BF85987-6A2E-4A9B-9DBF-C9A3580E7588
+  publisherDisplayName: Kento Yamada
   displayName: Timeboard
   applicationId: Timeboard
   languages:

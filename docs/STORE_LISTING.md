@@ -47,8 +47,9 @@ screen time, app usage, digital wellbeing, unused apps, privacy, windows
 
 ## Submission
 
-1. Partner Center で製品名を予約（本人ログイン。個人開発者は初回 $19 相当の登録料）
-2. Product identity の `identityName` / `publisher` を `electron-builder.yml` の `appx` に反映
-3. `npm run pack:store` で APPX を再ビルド
-4. Packages / Store listings / Age ratings / Properties を提出
-5. 公開 URL が付いたら `storeUrls.windows` を personal-site に追記
+1. [storedeveloper.microsoft.com](https://storedeveloper.microsoft.com) から個人開発者登録（無料。ID＋自撮り。入口はここだけ使う） — 済
+2. Partner Center で **Timeboard** を予約 — 済（Identity: `KentoYamada.Timeboard` / `CN=2BF85987-6A2E-4A9B-9DBF-C9A3580E7588` / `Kento Yamada`）
+3. `electron-builder.yml` の `appx` に反映して `npm run pack:store`
+4. Partner Center の **Packages** に arm64 / x64 の `.appx` をアップロード
+5. Store listings / Age ratings / Properties を提出（掲載文はこのファイル）
+6. 公開 URL が付いたら `storeUrls.windows` を personal-site に追記

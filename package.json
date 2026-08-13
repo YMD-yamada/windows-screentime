@@ -24,7 +24,7 @@
     "smoke": "node scripts/smoke.mjs",
     "icons": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/make-icons.ps1",
     "pack:win": "npm run build && npx --yes electron-builder --win nsis portable appx --x64 --arm64 --config electron-builder.yml",
-    "pack:store": "npm run build && npx --yes electron-builder --win appx --config electron-builder.yml",
+    "pack:store": "npm run build && npx --yes electron-builder --win appx --x64 --arm64 --config electron-builder.yml",
     "postinstall": "node scripts/fix-rollup-wasm.mjs"
   },
   "dependencies": {},
