@@ -21,6 +21,7 @@ function Add-UninstallHive([string]$keyPath, [string]$hive) {
       uninstall       = [string]$p.QuietUninstallString
       uninstallOpen   = [string]$p.UninstallString
       installLocation = [string]$p.InstallLocation
+      displayIcon     = [string]$p.DisplayIcon
       sizeKb          = $(if ($p.EstimatedSize) { [int]$p.EstimatedSize } else { $null })
     }) | Out-Null
   }
@@ -33,9 +34,17 @@ Add-UninstallHive 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' 'H
 Get-AppxPackage -ErrorAction SilentlyContinue |
   Where-Object { -not $_.IsFramework -and -not $_.NonRemovable } |
   ForEach-Object {
+    $display = [string]$_.Name
+    $manifest = Join-Path $_.InstallLocation 'AppxManifest.xml'
+    if (Test-Path $manifest) {
+      $xml = Get-Content -LiteralPath $manifest -Raw -ErrorAction SilentlyContinue
+      if ($xml -match 'DisplayName="([^"]+)"' -and $Matches[1] -notmatch 'ms-resource') {
+        $display = [string]$Matches[1]
+      }
+    }
     $apps.Add([ordered]@{
       id                = "store|$($_.PackageFullName)"
-      name              = [string]$_.Name
+      name              = $display
       publisher         = [string]$_.Publisher
       version           = [string]$_.Version
       type              = 'store'

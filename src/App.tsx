@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AppIcon, BrandMark, UsageRing } from './components/AppIcon'
 import { resolveLang, t, type Lang } from './i18n'
 
 type Range = 'today' | '7d' | '30d'
 type Tab = Range | 'unused' | 'settings'
+type Filter = 'all' | 'win32' | 'store'
 
 type AppRow = {
   id: string
@@ -27,6 +29,7 @@ type Settings = {
   idleSeconds: number
   tracking: boolean
   unusedDays: number
+  seenTips?: boolean
 }
 
 type NowInfo = {
@@ -34,6 +37,7 @@ type NowInfo = {
   title?: string
   status?: string
   idleMs?: number
+  path?: string
 }
 
 type UnusedApp = {
@@ -43,6 +47,9 @@ type UnusedApp = {
   type?: string
   uninstallOpen?: string
   switchHint?: number
+  displayIcon?: string
+  installLocation?: string
+  path?: string
 }
 
 function formatDuration(ms: number, lang: Lang) {
@@ -57,6 +64,11 @@ function formatDuration(ms: number, lang: Lang) {
   return `${h}h ${m}m`
 }
 
+function weekday(date: string, lang: Lang) {
+  const d = new Date(`${date}T12:00:00`)
+  return d.toLocaleDateString(lang === 'ja' ? 'ja-JP' : 'en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
+}
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('today')
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -65,6 +77,9 @@ export default function App() {
   const [unused, setUnused] = useState<UnusedApp[] | null>(null)
   const [unusedMeta, setUnusedMeta] = useState('')
   const [busy, setBusy] = useState(false)
+  const [icons, setIcons] = useState<Record<string, string>>({})
+  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<Filter>('all')
 
   const lang = resolveLang(settings?.language || 'system')
   const d = t(lang)
@@ -100,6 +115,40 @@ export default function App() {
   }, [api])
 
   useEffect(() => {
+    if (!api?.onIcon) return
+    return api.onIcon(({ key, dataUrl }) => {
+      if (!key || !dataUrl) return
+      setIcons((prev) => (prev[key] === dataUrl ? prev : { ...prev, [key]: dataUrl }))
+    })
+  }, [api])
+
+  useEffect(() => {
+    if (!api) return
+    const reqs: Array<Record<string, string>> = []
+    if (now?.name || now?.path) {
+      reqs.push({ key: now.path || now.name || 'now', path: now.path || '', name: now.name || '' })
+    }
+    for (const app of summary?.apps || []) {
+      reqs.push({ key: app.id, path: app.path || '', exe: app.exe || '', name: app.name })
+    }
+    for (const app of unused || []) {
+      reqs.push({
+        key: app.id,
+        path: app.path || '',
+        displayIcon: app.displayIcon || '',
+        installLocation: app.installLocation || '',
+        name: app.name,
+      })
+    }
+    if (!reqs.length) return
+    void api.getIcons(reqs).then((cached) => {
+      if (cached && Object.keys(cached).length) {
+        setIcons((prev) => ({ ...cached, ...prev }))
+      }
+    })
+  }, [api, summary, unused, now?.path, now?.name])
+
+  useEffect(() => {
     if (tab !== 'unused' || !api) return
     let cancelled = false
     setBusy(true)
@@ -120,6 +169,8 @@ export default function App() {
 
   const maxApp = Math.max(1, ...(summary?.apps.map((a) => a.ms) || [1]))
   const maxDay = Math.max(1, ...(summary?.byDay.map((a) => a.ms) || [1]))
+  const activeMs = summary?.totalMs || 0
+  const idleMs = summary?.idleMs || 0
 
   const statusLabel = useMemo(() => {
     if (!settings?.tracking || now?.status === 'paused') return d.paused
@@ -127,55 +178,116 @@ export default function App() {
     return d.tracking
   }, [settings, now, d])
 
+  const filteredUnused = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return (unused || []).filter((app) => {
+      if (filter !== 'all' && app.type !== filter) return false
+      if (!q) return true
+      return `${app.name} ${app.publisher || ''}`.toLowerCase().includes(q)
+    })
+  }, [unused, query, filter])
+
   async function patchSettings(patch: Partial<Settings>) {
     if (!api) return
     const next = await api.setSettings(patch)
     setSettings(next)
   }
 
+  const tabs: { key: Tab; label: string; icon: string }[] = [
+    { key: 'today', label: d.today, icon: '◉' },
+    { key: '7d', label: d.d7, icon: '▦' },
+    { key: '30d', label: d.d30, icon: '▤' },
+    { key: 'unused', label: d.unused, icon: '◎' },
+    { key: 'settings', label: d.settings, icon: '⚙' },
+  ]
+
   return (
     <div className="app">
       <header className="hero">
         <div className="brand">
-          <h1>{d.title}</h1>
-          <p>{d.tagline}</p>
+          <div className="brand-row">
+            <BrandMark size={44} />
+            <div>
+              <h1>{d.title}</h1>
+              <p>{d.tagline}</p>
+            </div>
+          </div>
           <div className="disclaimer">{d.disclaimer}</div>
         </div>
-        <div className="now-pill">
-          <div className="muted">{d.now}</div>
-          <b>{now?.name || '—'}</b>
-          <div className="muted">{statusLabel}</div>
+        <div className={`now-card status-${now?.status || 'active'}`}>
+          <AppIcon src={icons[now?.path || now?.name || '']} name={now?.name || d.now} size={40} />
+          <div className="now-copy">
+            <div className="muted">{d.now}</div>
+            <b>{now?.name || '—'}</b>
+            <div className={`status-dot ${now?.status || 'active'}`}>{statusLabel}</div>
+          </div>
         </div>
       </header>
 
-      <nav className="tabs">
-        {(['today', '7d', '30d', 'unused', 'settings'] as Tab[]).map((key) => (
-          <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
-            {key === 'today' ? d.today : key === '7d' ? d.d7 : key === '30d' ? d.d30 : key === 'unused' ? d.unused : d.settings}
+      {!settings?.seenTips && (
+        <aside className="tip-card">
+          <BrandMark size={36} />
+          <div>
+            <strong>{d.tipTitle}</strong>
+            <p>{d.tipBody}</p>
+          </div>
+          <button className="btn primary" onClick={() => patchSettings({ seenTips: true })}>
+            {d.tipOk}
+          </button>
+        </aside>
+      )}
+
+      <nav className="tabs" aria-label="views">
+        {tabs.map((item) => (
+          <button
+            key={item.key}
+            className={tab === item.key ? 'active' : ''}
+            onClick={() => setTab(item.key)}
+          >
+            <span className="tab-ico" aria-hidden>
+              {item.icon}
+            </span>
+            {item.label}
           </button>
         ))}
       </nav>
 
       {(tab === 'today' || tab === '7d' || tab === '30d') && (
         <section className="grid">
-          <article className="card">
+          <article className="card summary-card">
+            <UsageRing activeMs={activeMs} idleMs={idleMs} label={formatDuration(activeMs, lang)} />
             <div className="muted">{d.total}</div>
-            <div className="total-num">{formatDuration(summary?.totalMs || 0, lang)}</div>
+            <div className="legend">
+              <span>
+                <i className="swatch active" />
+                {d.active} {formatDuration(activeMs, lang)}
+              </span>
+              <span>
+                <i className="swatch idle" />
+                {d.idle} {formatDuration(idleMs, lang)}
+              </span>
+            </div>
             <div className="muted">
-              {d.idle}: {formatDuration(summary?.idleMs || 0, lang)}
+              {(summary?.apps.length || 0).toString()} {d.appsCount}
             </div>
             <div className="actions">
+              <button
+                className="btn"
+                onClick={() => patchSettings({ tracking: !(settings?.tracking !== false) })}
+              >
+                {settings?.tracking === false ? d.resume : d.pause}
+              </button>
               <button className="btn" onClick={() => api?.exportCsv(tab === 'today' ? 'today' : tab)}>
                 {d.exportCsv}
               </button>
             </div>
             {tab !== 'today' && (
-              <div style={{ marginTop: 16 }}>
+              <div className="day-list">
                 {(summary?.byDay || []).map((day) => (
-                  <div className="day-row" key={day.date}>
-                    <span>{day.date.slice(5)}</span>
+                  <div className="day-row" key={day.date} title={day.date}>
+                    <span>{weekday(day.date, lang)}</span>
                     <div className="track">
-                      <div className="fill" style={{ width: `${Math.max(4, (day.ms / maxDay) * 100)}%` }} />
+                      <div className="fill" style={{ width: `${Math.max(6, (day.ms / maxDay) * 100)}%` }} />
                     </div>
                     <span>{formatDuration(day.ms, lang)}</span>
                   </div>
@@ -185,17 +297,31 @@ export default function App() {
           </article>
           <article className="card">
             {!summary?.apps.length ? (
-              <div className="empty">{d.noData}</div>
+              <div className="empty">
+                <BrandMark size={56} />
+                <p>{d.noData}</p>
+              </div>
             ) : (
-              summary.apps.slice(0, 20).map((app) => (
-                <div className="bar-row" key={app.id} title={app.path || app.exe}>
-                  <span>{app.name}</span>
-                  <div className="track">
-                    <div className="fill" style={{ width: `${Math.max(4, (app.ms / maxApp) * 100)}%` }} />
+              summary.apps.slice(0, 24).map((app) => {
+                const pct = Math.round((app.ms / Math.max(activeMs, 1)) * 100)
+                return (
+                  <div className="bar-row" key={app.id} title={app.path || app.exe}>
+                    <AppIcon src={icons[app.id]} name={app.name} />
+                    <div className="bar-meta">
+                      <div className="bar-name">{app.name}</div>
+                      <div className="track">
+                        <div className="fill" style={{ width: `${Math.max(4, (app.ms / maxApp) * 100)}%` }} />
+                      </div>
+                    </div>
+                    <div className="bar-time">
+                      <strong>{formatDuration(app.ms, lang)}</strong>
+                      <span className="muted">
+                        {pct}% {d.shareOf}
+                      </span>
+                    </div>
                   </div>
-                  <span>{formatDuration(app.ms, lang)}</span>
-                </div>
-              ))
+                )
+              })
             )}
           </article>
         </section>
@@ -204,7 +330,21 @@ export default function App() {
       {tab === 'unused' && (
         <section className="card">
           <p className="muted">{d.unusedHelp}</p>
-          <div className="actions">
+          <div className="toolbar">
+            <input
+              className="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={d.searchUnused}
+              aria-label={d.searchUnused}
+            />
+            <div className="filters">
+              {(['all', 'win32', 'store'] as Filter[]).map((f) => (
+                <button key={f} className={filter === f ? 'btn primary' : 'btn'} onClick={() => setFilter(f)}>
+                  {f === 'all' ? d.filterAll : f === 'store' ? d.filterStore : d.filterDesktop}
+                </button>
+              ))}
+            </div>
             <button
               className="btn"
               disabled={busy}
@@ -224,19 +364,32 @@ export default function App() {
             </button>
             <span className="muted">{busy ? '…' : unusedMeta}</span>
           </div>
-          {(unused || []).slice(0, 80).map((app) => (
+          {filteredUnused.slice(0, 100).map((app) => (
             <div className="unused-item" key={app.id}>
-              <div>
-                <h3>{app.name}</h3>
+              <AppIcon
+                src={icons[app.id]}
+                name={app.name}
+                size={40}
+              />
+              <div className="unused-copy">
+                <h3>
+                  {app.name}
+                  {(app.switchHint || 0) === 0 ? <em className="badge">{d.candidate}</em> : null}
+                </h3>
                 <div className="muted">
                   {app.type === 'store' ? d.typeStore : d.typeWin32}
                   {app.publisher ? ` · ${app.publisher}` : ''}
                   {typeof app.switchHint === 'number' ? ` · ${d.switchHint} ${app.switchHint}` : ''}
                 </div>
               </div>
-              <button className="btn" onClick={() => api?.openUninstall(app)}>
-                {d.openUninstall}
-              </button>
+              <div className="unused-actions">
+                <button className="btn" onClick={() => api?.openLocation(app)}>
+                  {d.openLocation}
+                </button>
+                <button className="btn primary" onClick={() => api?.openUninstall(app)}>
+                  {d.openUninstall}
+                </button>
+              </div>
             </div>
           ))}
         </section>
@@ -244,6 +397,14 @@ export default function App() {
 
       {tab === 'settings' && settings && (
         <section className="card settings">
+          <div className="setting-block">
+            <BrandMark size={48} />
+            <div>
+              <h2>{d.title}</h2>
+              <p className="muted">{d.privacyBody}</p>
+            </div>
+          </div>
+
           <label>{d.language}</label>
           <select
             value={settings.language}
@@ -254,22 +415,22 @@ export default function App() {
             <option value="en">{d.langEn}</option>
           </select>
 
-          <div className="row">
+          <label className="toggle">
             <span>{d.trackingEnabled}</span>
             <input
               type="checkbox"
               checked={settings.tracking}
               onChange={(e) => patchSettings({ tracking: e.target.checked })}
             />
-          </div>
-          <div className="row">
+          </label>
+          <label className="toggle">
             <span>{d.autostart}</span>
             <input
               type="checkbox"
               checked={settings.autostart}
               onChange={(e) => patchSettings({ autostart: e.target.checked })}
             />
-          </div>
+          </label>
 
           <label>{d.idleSeconds}</label>
           <input
@@ -289,8 +450,7 @@ export default function App() {
             onChange={(e) => patchSettings({ unusedDays: Number(e.target.value) || 14 })}
           />
 
-          <h3 style={{ marginTop: 24 }}>{d.privacy}</h3>
-          <p className="muted">{d.privacyBody}</p>
+          <h3>{d.privacy}</h3>
           <p className="muted">{d.quitHint}</p>
         </section>
       )}

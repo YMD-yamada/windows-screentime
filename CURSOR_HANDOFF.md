@@ -1,14 +1,13 @@
 # CURSOR_HANDOFF
 
-更新: 2026-08-13（公開・Store 申請準備）
+更新: 2026-08-13（v0.2.0 アイコン + UI）
 
 ## Progress
-- リポ: `C:\Users\cz7\Projects\windows-screentime` → GitHub `YMD-yamada/windows-screentime`
-- 製品名: Timeboard（Windows アプリ使用時間、本地のみ）
-- 配布: GitHub Release（NSIS / portable / APPX）
-- 法務: personal-site `/apps/timeboard/`
-- Microsoft Store: Partner Center 本人ログイン待ち。Identity 反映後に `npm run pack:store` 再提出
-- 表現: 「iOSと同様」は使わない
+- リポ: https://github.com/YMD-yamada/windows-screentime
+- v0.2.0: アプリアイコン抽出、リングUI、未使用検索、トレイ/ウィンドウアイコン
+- Release: https://github.com/YMD-yamada/windows-screentime/releases/latest
+- 法務: https://personal-site-taupe-gamma.vercel.app/apps/timeboard/
+- Microsoft Store: Partner Center 本人ログイン待ち
 
 ## claim
 - Status: idle

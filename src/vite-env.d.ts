@@ -19,6 +19,7 @@ export type TimeboardSettings = {
   idleSeconds: number
   tracking: boolean
   unusedDays: number
+  seenTips?: boolean
 }
 
 export type TimeboardNow = {
@@ -38,9 +39,23 @@ export type TimeboardUnused = {
     type?: string
     uninstallOpen?: string
     switchHint?: number
+    displayIcon?: string
+    installLocation?: string
+    path?: string
   }>
   trackedApps: number
   inventoryCount: number
+}
+
+export type TimeboardIconReq = {
+  key?: string
+  id?: string
+  name?: string
+  path?: string
+  exe?: string
+  displayIcon?: string
+  installLocation?: string
+  icon?: string
 }
 
 export type TimeboardApi = {
@@ -51,7 +66,10 @@ export type TimeboardApi = {
   getNow: () => Promise<TimeboardNow | null>
   exportCsv: (range: 'today' | '7d' | '30d') => Promise<{ ok: boolean; canceled?: boolean; filePath?: string }>
   openUninstall: (app: Record<string, unknown>) => Promise<{ ok: boolean; method?: string }>
+  openLocation: (app: Record<string, unknown>) => Promise<{ ok: boolean }>
   refreshInstalled: () => Promise<{ count: number }>
+  getIcons: (reqs: TimeboardIconReq[]) => Promise<Record<string, string>>
+  onIcon: (cb: (payload: { key: string; dataUrl: string }) => void) => () => void
 }
 
 declare global {

@@ -36,6 +36,7 @@ class TimeboardStore {
       idleSeconds: 90,
       tracking: true,
       unusedDays: 14,
+      seenTips: false,
     }
   }
 

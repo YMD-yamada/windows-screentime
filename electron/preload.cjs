@@ -8,5 +8,12 @@ contextBridge.exposeInMainWorld('timeboard', {
   getNow: () => ipcRenderer.invoke('tb:now'),
   exportCsv: (range) => ipcRenderer.invoke('tb:exportCsv', range),
   openUninstall: (app) => ipcRenderer.invoke('tb:openUninstall', app),
+  openLocation: (app) => ipcRenderer.invoke('tb:openLocation', app),
   refreshInstalled: () => ipcRenderer.invoke('tb:refreshInstalled'),
+  getIcons: (reqs) => ipcRenderer.invoke('tb:icons', reqs),
+  onIcon: (cb) => {
+    const listener = (_e, payload) => cb(payload)
+    ipcRenderer.on('tb:icon-ready', listener)
+    return () => ipcRenderer.removeListener('tb:icon-ready', listener)
+  },
 })

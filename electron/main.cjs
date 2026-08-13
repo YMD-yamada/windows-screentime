@@ -13,6 +13,7 @@ const fs = require('fs')
 const { spawn } = require('child_process')
 const { TimeboardStore } = require('./store.cjs')
 const { Tracker, snapshotOnce, loadInstalledApps, unusedApps } = require('./tracker.cjs')
+const { IconCache } = require('./icons.cjs')
 
 if (process.platform === 'win32') {
   app.setAppUserModelId('ymd.Timeboard')
@@ -37,25 +38,30 @@ let mainWindow = null
 let tray = null
 let store
 let tracker
+let icons
 
 function dataRoot() {
   return path.join(app.getPath('userData'), 'Timeboard')
 }
 
 function trayIcon() {
+  const fromBuild = path.join(APP_ROOT, 'build', 'icon-44.png')
+  if (fs.existsSync(fromBuild)) return nativeImage.createFromPath(fromBuild)
   const png =
     'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAsklEQVQ4T2NkwA7+MzIw/GdgYPjPgA1g1TCqAQcGBgbG////M/z794/h379/DP/+/WP4+/cvw79//xj+/v3L8O/fP4Z///4x/P37l+Hfv38M//79Y/j79y/Dv3//GP79+8fw798/hn///jH8/fuX4d+/f4wApVwY/5m2Z0YAAAAASUVORK5CYII='
   return nativeImage.createFromDataURL(`data:image/png;base64,${png}`)
 }
 
 function createWindow() {
+  const winIcon = path.join(APP_ROOT, 'build', 'icon.png')
   mainWindow = new BrowserWindow({
-    width: 920,
-    height: 720,
-    minWidth: 720,
-    minHeight: 560,
+    width: 980,
+    height: 760,
+    minWidth: 760,
+    minHeight: 600,
     title: 'Timeboard',
     backgroundColor: '#f4f1ea',
+    icon: fs.existsSync(winIcon) ? winIcon : undefined,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -165,6 +171,33 @@ function registerIpc() {
     await shell.openExternal('ms-settings:appsfeatures')
     return { ok: true, method: 'settings' }
   })
+  ipcMain.handle('tb:openLocation', async (_e, appInfo) => {
+    const loc = appInfo?.installLocation || appInfo?.path || appInfo?.displayIcon || ''
+    const cleaned = String(loc).replace(/,\s*-?\d+$/, '').replace(/^"+|"+$/g, '')
+    if (cleaned && fs.existsSync(cleaned)) {
+      if (fs.statSync(cleaned).isDirectory()) shell.openPath(cleaned)
+      else shell.showItemInFolder(cleaned)
+      return { ok: true }
+    }
+    return { ok: false }
+  })
+  ipcMain.handle('tb:icons', (_e, reqs) => {
+    const out = {}
+    for (const req of reqs || []) {
+      const key = req.key || req.id || req.path || req.name
+      if (!key) continue
+      const cached = icons.peek(req)
+      if (cached) out[key] = cached
+      else {
+        icons.enqueue(req, (dataUrl) => {
+          if (dataUrl && mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('tb:icon-ready', { key, dataUrl })
+          }
+        })
+      }
+    }
+    return out
+  })
 }
 
 async function runSmoke() {
@@ -189,6 +222,7 @@ app.on('second-instance', () => showWindow())
 
 app.whenReady().then(async () => {
   store = new TimeboardStore(dataRoot())
+  icons = new IconCache(dataRoot())
   const settings = store.readSettings()
   applyAutostart(settings.autostart)
   tracker = new Tracker(store, { projectRoot: APP_ROOT })

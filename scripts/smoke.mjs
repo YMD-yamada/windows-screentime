@@ -14,6 +14,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
 const { TimeboardStore } = require(path.join(root, 'electron/store.cjs'))
 const { snapshotOnce } = require(path.join(root, 'electron/tracker.cjs'))
+const { IconCache } = require(path.join(root, 'electron/icons.cjs'))
 
 const args = new Set(process.argv.slice(2))
 const skipBuild = args.has('--skip-build')
@@ -72,6 +73,18 @@ async function main() {
     record('store roundtrip', summary.apps.length === 1 && summary.totalMs === 120_000, `${summary.apps[0]?.name} ${summary.totalMs}ms`)
   } catch (e) {
     record('store roundtrip', false, e.message)
+  }
+
+  try {
+    const cache = new IconCache(tmp)
+    const ps =
+      process.env.SystemRoot
+        ? path.join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+        : 'powershell.exe'
+    const url = await cache.snapshotOnce(ps)
+    record('extract icon', Boolean(url && url.startsWith('data:image/png')), url ? `${Math.round(url.length / 1024)}kb` : 'empty')
+  } catch (e) {
+    record('extract icon', false, e.message)
   }
 
   if (!skipBuild) {
