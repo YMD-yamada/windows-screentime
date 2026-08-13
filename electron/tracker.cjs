@@ -1,6 +1,7 @@
 const { spawn } = require('child_process')
 const path = require('path')
 const { isJudgableUnused } = require('./cleanup-filter.cjs')
+const { isInternalApp, windowsBucket } = require('./system-apps.cjs')
 
 const HELPER = path.join(__dirname, 'helper.ps1')
 const INSTALLED = path.join(__dirname, 'installed-apps.ps1')
@@ -131,18 +132,18 @@ class Tracker {
     const idle = Number(snapshot.idleMs) || 0
 
     if (this.paused || !settings.tracking) {
-      this.current = { ...snapshot, status: 'paused' }
+      this.current = { status: 'paused', internal: true }
       return
     }
 
     if (idle >= idleLimit) {
       this.store.addUsage(null, 0, elapsed)
-      this.current = { ...snapshot, status: 'idle', name: displayName(snapshot) }
+      this.current = { status: 'idle', internal: true }
       return
     }
 
     if (isOurProcess(snapshot, this.projectRoot)) {
-      this.current = { ...snapshot, status: 'self', name: 'Timeboard' }
+      this.current = { status: 'self', internal: true, name: 'Timeboard' }
       this.store.addUsage(
         {
           id: 'timeboard',
@@ -156,13 +157,20 @@ class Tracker {
       return
     }
 
+    if (isInternalApp(snapshot)) {
+      const bucket = windowsBucket()
+      this.current = { status: 'active', internal: true }
+      this.store.addUsage({ ...bucket }, elapsed, 0)
+      return
+    }
+
     const app = {
       id: appId(snapshot),
       name: displayName(snapshot),
       exe: exeName(snapshot.path, snapshot.name),
       path: snapshot.path || '',
     }
-    this.current = { ...snapshot, status: 'active', name: app.name }
+    this.current = { ...snapshot, status: 'active', internal: false, name: app.name }
     this.store.addUsage(app, elapsed, 0)
   }
 
@@ -313,8 +321,7 @@ function unusedApps(store, inventory, { days = 14, ignoredIds = [] } = {}) {
     .sort(
       (a, b) =>
         (Number(b.sizeKb) || 0) - (Number(a.sizeKb) || 0) ||
-        a.switchHint - b.switchHint ||
-        String(a.name).localeCompare(String(b.name)),
+        String(a.name || '').localeCompare(String(b.name || ''), 'ja'),
     )
   const sizeTotalKb = list.reduce((s, a) => s + (Number(a.sizeKb) || 0), 0)
   return {

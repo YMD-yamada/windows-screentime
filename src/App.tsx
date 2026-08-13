@@ -4,7 +4,7 @@ import { resolveLang, t, type Lang } from './i18n'
 
 type Range = 'today' | '7d' | '30d'
 type Tab = Range | 'unused' | 'settings'
-type Filter = 'all' | 'win32' | 'store'
+type Sort = 'size' | 'name'
 
 type AppRow = {
   id: string
@@ -39,6 +39,7 @@ type NowInfo = {
   status?: string
   idleMs?: number
   path?: string
+  internal?: boolean
 }
 
 type UnusedApp = {
@@ -93,7 +94,7 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [icons, setIcons] = useState<Record<string, string>>({})
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<Filter>('all')
+  const [sort, setSort] = useState<Sort>('size')
   const [confirmApp, setConfirmApp] = useState<UnusedApp | null>(null)
   const [uninstalling, setUninstalling] = useState(false)
   const [notice, setNotice] = useState('')
@@ -142,10 +143,8 @@ export default function App() {
   useEffect(() => {
     if (!api) return
     const reqs: Array<Record<string, string>> = []
-    if (now?.name || now?.path) {
-      reqs.push({ key: now.path || now.name || 'now', path: now.path || '', name: now.name || '' })
-    }
     for (const app of summary?.apps || []) {
+      if (app.id === 'windows-shell') continue
       reqs.push({ key: app.id, path: app.path || '', exe: app.exe || '', name: app.name })
     }
     for (const app of unused || []) {
@@ -163,7 +162,7 @@ export default function App() {
         setIcons((prev) => ({ ...cached, ...prev }))
       }
     })
-  }, [api, summary, unused, now?.path, now?.name])
+  }, [api, summary, unused])
 
   useEffect(() => {
     if (tab !== 'unused' || !api) return
@@ -198,14 +197,23 @@ export default function App() {
     return d.tracking
   }, [settings, now, d])
 
-  const filteredUnused = useMemo(() => {
+  const sortedUnused = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return (unused || []).filter((app) => {
-      if (filter !== 'all' && app.type !== filter) return false
+    const loc = lang === 'ja' ? 'ja' : 'en'
+    const list = (unused || []).filter((app) => {
       if (!q) return true
       return `${app.name} ${app.publisher || ''}`.toLowerCase().includes(q)
     })
-  }, [unused, query, filter])
+    if (sort === 'name') {
+      list.sort((a, b) => a.name.localeCompare(b.name, loc))
+    } else {
+      list.sort(
+        (a, b) =>
+          (Number(b.sizeKb) || 0) - (Number(a.sizeKb) || 0) || a.name.localeCompare(b.name, loc),
+      )
+    }
+    return list
+  }, [unused, query, sort, lang])
 
   async function patchSettings(patch: Partial<Settings>) {
     if (!api) return
@@ -256,19 +264,16 @@ export default function App() {
             <BrandMark size={44} />
             <div>
               <h1>{d.title}</h1>
-              <p>{d.tagline}</p>
+              <p>{d.purpose}</p>
             </div>
+          </div>
+          <div className="purpose-steps">
+            <span>1. {d.purpose1}</span>
+            <span>2. {d.purpose2}</span>
           </div>
           <div className="disclaimer">{d.disclaimer}</div>
         </div>
-        <div className={`now-card status-${now?.status || 'active'}`}>
-          <AppIcon src={icons[now?.path || now?.name || '']} name={now?.name || d.now} size={40} />
-          <div className="now-copy">
-            <div className="muted">{d.now}</div>
-            <b>{now?.name || '—'}</b>
-            <div className={`status-dot ${now?.status || 'active'}`}>{statusLabel}</div>
-          </div>
-        </div>
+        <div className={`status-pill status-${now?.status || 'active'}`}>{statusLabel}</div>
       </header>
 
       {!settings?.seenTips && (
@@ -327,6 +332,9 @@ export default function App() {
               <button className="btn" onClick={() => api?.exportCsv(tab === 'today' ? 'today' : tab)}>
                 {d.exportCsv}
               </button>
+              <button className="btn primary" onClick={() => setTab('unused')}>
+                {d.goCleanup}
+              </button>
             </div>
             {tab !== 'today' && (
               <div className="day-list">
@@ -343,6 +351,9 @@ export default function App() {
             )}
           </article>
           <article className="card">
+            <div className="section-head">
+              <h2>{d.usedHeading}</h2>
+            </div>
             {!summary?.apps.length ? (
               <div className="empty">
                 <BrandMark size={56} />
@@ -351,11 +362,12 @@ export default function App() {
             ) : (
               summary.apps.slice(0, 24).map((app) => {
                 const pct = Math.round((app.ms / Math.max(activeMs, 1)) * 100)
+                const label = app.id === 'windows-shell' ? d.windowsBucket : app.name
                 return (
                   <div className="bar-row" key={app.id} title={app.path || app.exe}>
-                    <AppIcon src={icons[app.id]} name={app.name} />
+                    <AppIcon src={icons[app.id]} name={label} />
                     <div className="bar-meta">
-                      <div className="bar-name">{app.name}</div>
+                      <div className="bar-name">{label}</div>
                       <div className="track">
                         <div className="fill" style={{ width: `${Math.max(4, (app.ms / maxApp) * 100)}%` }} />
                       </div>
@@ -395,11 +407,12 @@ export default function App() {
               aria-label={d.searchUnused}
             />
             <div className="filters">
-              {(['all', 'win32', 'store'] as Filter[]).map((f) => (
-                <button key={f} className={filter === f ? 'btn primary' : 'btn'} onClick={() => setFilter(f)}>
-                  {f === 'all' ? d.filterAll : f === 'store' ? d.filterStore : d.filterDesktop}
-                </button>
-              ))}
+              <button className={sort === 'size' ? 'btn primary' : 'btn'} onClick={() => setSort('size')}>
+                {d.sortSize}
+              </button>
+              <button className={sort === 'name' ? 'btn primary' : 'btn'} onClick={() => setSort('name')}>
+                {d.sortName}
+              </button>
             </div>
             <button
               className="btn"
@@ -420,14 +433,11 @@ export default function App() {
             </button>
             <span className="muted">{busy ? '…' : unusedMeta}</span>
           </div>
-          {filteredUnused.slice(0, 100).map((app) => (
+          {sortedUnused.slice(0, 100).map((app) => (
             <div className="unused-item" key={app.id}>
               <AppIcon src={icons[app.id]} name={app.name} size={40} />
               <div className="unused-copy">
-                <h3>
-                  {app.name}
-                  {(app.switchHint || 0) === 0 ? <em className="badge">{d.candidate}</em> : null}
-                </h3>
+                <h3>{app.name}</h3>
                 <div className="muted">
                   {app.type === 'store' ? d.typeStore : d.typeWin32}
                   {formatSize(app.sizeKb) ? ` · ${formatSize(app.sizeKb)}` : ''}
@@ -437,9 +447,6 @@ export default function App() {
               <div className="unused-actions">
                 <button className="btn" onClick={() => keepApp(app)} title={d.cleanupKeep}>
                   {d.keep}
-                </button>
-                <button className="btn" onClick={() => api?.openLocation(app)}>
-                  {d.openLocation}
                 </button>
                 <button className="btn primary" onClick={() => setConfirmApp(app)}>
                   {d.openUninstall}

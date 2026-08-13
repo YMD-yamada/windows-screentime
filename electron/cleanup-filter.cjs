@@ -4,9 +4,13 @@ const RUNTIME_RE =
 const STORE_INFRA_RE =
   /^(Microsoft\.(UI|VCLibs|WindowsAppRuntime|Win32WebViewHost|DirectX|Services\.Store|DesktopAppInstaller|StorePurchaseApp|ECApp|YourPhone)|MicrosoftWindows\.|Microsoft\.WindowsStore|Microsoft\.Windows\.(DevHome|CloudExperienceHost|StartMenuExperienceHost|PeopleExperienceHost)|Microsoft\.MicrosoftEdge)/i
 
+const SHELL_NAME_RE =
+  /^(file explorer|windows explorer|microsoft store|xbox game bar|windows security|windows defender|cortana|widgets|tips|feedback hub|get started|settings)$/i
+
 function isRuntimeOrInternal(app) {
   const name = String(app?.name || '')
   if (RUNTIME_RE.test(name)) return true
+  if (SHELL_NAME_RE.test(name)) return true
   if (app?.type === 'store') {
     const pkg = String(app.packageFamilyName || app.name || '')
     if (STORE_INFRA_RE.test(pkg) || STORE_INFRA_RE.test(name)) return true
@@ -21,18 +25,26 @@ function hasUninstallMethod(app) {
   return Boolean(String(app?.uninstall || '').trim() || String(app?.uninstallOpen || '').trim())
 }
 
+function normalizeName(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[™®]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function matchesStartMenu(app, startApps) {
   if (!Array.isArray(startApps) || !startApps.length) return false
-  const n = String(app?.name || '').toLowerCase().trim()
-  if (!n) return false
+  const n = normalizeName(app?.name)
+  if (!n || n.length < 2) return false
   const family = String(app?.packageFamilyName || '').toLowerCase()
   for (const s of startApps) {
-    const sn = String(s?.name || '').toLowerCase().trim()
+    const sn = normalizeName(s?.name)
     const id = String(s?.appId || '').toLowerCase()
     if (!sn) continue
     if (sn === n) return true
-    if (n.length >= 4 && (sn.includes(n) || n.includes(sn))) return true
-    if (family && id.includes(family)) return true
+    if (sn.endsWith(` ${n}`) || n.endsWith(` ${sn}`)) return true
+    if (family && family.length > 8 && id.includes(family)) return true
   }
   return false
 }

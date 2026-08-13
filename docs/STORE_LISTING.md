@@ -8,12 +8,12 @@ Do not claim Apple Screen Time compatibility.
 ## Japanese (primary)
 
 **短い説明**  
-Windows のアプリ使用時間を、この PC の中だけで記録します。
+PC で何に時間を使ったかを見て、使っていないアプリを外します。
 
 **長い説明**  
-Timeboard は、Windows 向けのデジタルウェルビーイングアプリです。いま前面にあるアプリを記録し、今日・7日・30日の使用時間を一覧します。使っていないインストール済みアプリの候補も出せるので、削除の検討に使えます。
+Timeboard は、Windows 向けのデジタルウェルビーイングアプリです。できることは2つだけです。(1) 今日・7日・30日で、どのアプリに時間を使ったかを見る。(2) スタートメニューにある使っていないアプリを、確認のうえ PC から外す。
 
-データはインターネットへ送りません。アカウントも広告も解析ツールもありません。記録はユーザーフォルダ内だけです。
+Windows の内部部品・ランタイム・ドライバは一覧に出しません。判断しなくてよいものは、そもそも表示しません。データはインターネットへ送りません。アカウントも広告も解析ツールもありません。記録はユーザーフォルダ内だけです。
 
 Apple の Screen Time とは無関係の独立したアプリです。
 
@@ -23,12 +23,12 @@ Apple の Screen Time とは無関係の独立したアプリです。
 ## English
 
 **Short description**  
-Track Windows app usage time locally on this PC.
+See where PC time went, then remove apps you do not use.
 
 **Full description**  
-Timeboard is a digital wellbeing app for Windows. It records the foreground app and shows today, 7-day, and 30-day usage. It also lists installed apps with no observed use, so you can consider uninstalling them.
+Timeboard is a digital wellbeing app for Windows with two jobs: (1) see which apps used time today, over 7 days, or 30 days; (2) uninstall unused Start-menu apps after one confirmation.
 
-No network. No account. No ads. No analytics. Data stays in your user folder.
+Windows internals, runtimes, and drivers are not listed. No network. No account. No ads. No analytics. Data stays in your user folder.
 
 Independent app. Not affiliated with Apple Screen Time.
 

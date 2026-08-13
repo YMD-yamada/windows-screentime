@@ -71,8 +71,15 @@ async function main() {
   try {
     const store = new TimeboardStore(tmp)
     store.addUsage({ id: 'c:\\fake\\cursor.exe', name: 'Cursor', exe: 'Cursor.exe', path: 'c:\\fake\\cursor.exe' }, 120_000)
+    store.addUsage({ id: 'c:\\windows\\explorer.exe', name: 'explorer', exe: 'explorer.exe', path: 'c:\\windows\\explorer.exe' }, 60_000)
     const summary = store.summarize('today')
-    record('store roundtrip', summary.apps.length === 1 && summary.totalMs === 120_000, `${summary.apps[0]?.name} ${summary.totalMs}ms`)
+    const cursor = summary.apps.find((a) => a.name === 'Cursor')
+    const windows = summary.apps.find((a) => a.id === 'windows-shell')
+    record(
+      'store roundtrip',
+      cursor?.ms === 120_000 && windows?.ms === 60_000 && summary.totalMs === 180_000,
+      `${summary.apps.map((a) => a.name).join('+')} ${summary.totalMs}ms`,
+    )
   } catch (e) {
     record('store roundtrip', false, e.message)
   }
@@ -120,7 +127,19 @@ async function main() {
       { name: 'Mystery Helper', type: 'win32', uninstallOpen: 'C:\\x\\unins000.exe' },
       start,
     )
-    record('judgable filter', keep && dropRuntime && dropHidden, `keep=${keep} runtime=${dropRuntime} hidden=${dropHidden}`)
+    const dropFuzzy = !isJudgableUnused(
+      { name: 'Host', type: 'win32', uninstallOpen: 'C:\\x\\unins000.exe' },
+      [{ name: 'ShellExperienceHost', appId: 'x' }],
+    )
+    const keepChrome = isJudgableUnused(
+      { name: 'Chrome', type: 'win32', uninstallOpen: 'C:\\x\\unins000.exe' },
+      [{ name: 'Google Chrome', appId: 'chrome' }],
+    )
+    record(
+      'judgable filter',
+      keep && dropRuntime && dropHidden && dropFuzzy && keepChrome,
+      `keep=${keep} runtime=${dropRuntime} hidden=${dropHidden} fuzzy=${dropFuzzy} chrome=${keepChrome}`,
+    )
   } catch (e) {
     record('uninstall plan', false, e.message)
   }

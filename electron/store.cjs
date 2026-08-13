@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const { isInternalApp, windowsBucket } = require('./system-apps.cjs')
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true })
@@ -125,7 +126,8 @@ class TimeboardStore {
       const day = this.readDay(key)
       let dayTotal = 0
       idleMs += day.idleMs || 0
-      for (const app of Object.values(day.apps || {})) {
+      for (const raw of Object.values(day.apps || {})) {
+        const app = isInternalApp(raw) ? { ...windowsBucket(), ms: raw.ms, lastSeen: raw.lastSeen } : raw
         dayTotal += app.ms || 0
         const prev = apps.get(app.id) || {
           id: app.id,
