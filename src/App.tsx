@@ -30,6 +30,7 @@ type Settings = {
   tracking: boolean
   unusedDays: number
   seenTips?: boolean
+  ignoredApps?: { id: string; name: string }[]
 }
 
 type NowInfo = {
@@ -50,6 +51,7 @@ type UnusedApp = {
   displayIcon?: string
   installLocation?: string
   path?: string
+  sizeKb?: number | null
 }
 
 function formatDuration(ms: number, lang: Lang) {
@@ -62,6 +64,15 @@ function formatDuration(ms: number, lang: Lang) {
   }
   if (h <= 0) return `${m}m`
   return `${h}h ${m}m`
+}
+
+function formatSize(kb?: number | null) {
+  const n = Number(kb) || 0
+  if (n <= 0) return ''
+  if (n < 1024) return `${n} KB`
+  const mb = n / 1024
+  if (mb < 1024) return `${mb >= 10 ? mb.toFixed(0) : mb.toFixed(1)} MB`
+  return `${(mb / 1024).toFixed(1)} GB`
 }
 
 function weekday(date: string, lang: Lang) {
@@ -80,6 +91,8 @@ export default function App() {
   const [icons, setIcons] = useState<Record<string, string>>({})
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
+  const [confirmApp, setConfirmApp] = useState<UnusedApp | null>(null)
+  const [notice, setNotice] = useState('')
 
   const lang = resolveLang(settings?.language || 'system')
   const d = t(lang)
@@ -157,7 +170,10 @@ export default function App() {
       .then((res) => {
         if (cancelled) return
         setUnused(res.unused || [])
-        setUnusedMeta(`${res.unused?.length || 0} / ${res.inventoryCount || 0}`)
+        const size = formatSize(res.sizeTotalKb)
+        setUnusedMeta(
+          `${d.cleanupStats.replace('{count}', String(res.unused?.length || 0))}${size ? ` · ${size}` : ''}`,
+        )
       })
       .finally(() => {
         if (!cancelled) setBusy(false)
@@ -191,6 +207,33 @@ export default function App() {
     if (!api) return
     const next = await api.setSettings(patch)
     setSettings(next)
+    return next
+  }
+
+  async function keepApp(app: UnusedApp) {
+    const ignoredApps = [
+      ...(settings?.ignoredApps || []).filter((x) => x.id !== app.id),
+      { id: app.id, name: app.name },
+    ]
+    await patchSettings({ ignoredApps })
+    setUnused((prev) => (prev || []).filter((a) => a.id !== app.id))
+    setNotice(`${app.name}: ${d.keep}`)
+  }
+
+  async function restoreApp(id: string) {
+    const ignoredApps = (settings?.ignoredApps || []).filter((x) => x.id !== id)
+    await patchSettings({ ignoredApps })
+    if (tab === 'unused') {
+      const res = await api?.getUnused(settings?.unusedDays || 14)
+      setUnused(res?.unused || [])
+    }
+  }
+
+  function applyUnusedMeta(res: { unused?: UnusedApp[]; sizeTotalKb?: number } | undefined) {
+    const size = formatSize(res?.sizeTotalKb)
+    setUnusedMeta(
+      `${d.cleanupStats.replace('{count}', String(res?.unused?.length || 0))}${size ? ` · ${size}` : ''}`,
+    )
   }
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
@@ -329,7 +372,16 @@ export default function App() {
 
       {tab === 'unused' && (
         <section className="card">
-          <p className="muted">{d.unusedHelp}</p>
+          <div className="explain">
+            <h2>{d.cleanupTitle}</h2>
+            <p>{d.cleanupLead}</p>
+            <ul>
+              <li>{d.cleanupIs}</li>
+              <li>{d.cleanupKeep}</li>
+              <li>{d.cleanupNot}</li>
+            </ul>
+          </div>
+          {notice ? <div className="notice">{notice}</div> : null}
           <div className="toolbar">
             <input
               className="search"
@@ -354,7 +406,7 @@ export default function App() {
                   await api?.refreshInstalled()
                   const res = await api?.getUnused(settings?.unusedDays || 14)
                   setUnused(res?.unused || [])
-                  setUnusedMeta(`${res?.unused?.length || 0} / ${res?.inventoryCount || 0}`)
+                  applyUnusedMeta(res)
                 } finally {
                   setBusy(false)
                 }
@@ -366,11 +418,7 @@ export default function App() {
           </div>
           {filteredUnused.slice(0, 100).map((app) => (
             <div className="unused-item" key={app.id}>
-              <AppIcon
-                src={icons[app.id]}
-                name={app.name}
-                size={40}
-              />
+              <AppIcon src={icons[app.id]} name={app.name} size={40} />
               <div className="unused-copy">
                 <h3>
                   {app.name}
@@ -378,15 +426,18 @@ export default function App() {
                 </h3>
                 <div className="muted">
                   {app.type === 'store' ? d.typeStore : d.typeWin32}
+                  {formatSize(app.sizeKb) ? ` · ${formatSize(app.sizeKb)}` : ''}
                   {app.publisher ? ` · ${app.publisher}` : ''}
-                  {typeof app.switchHint === 'number' ? ` · ${d.switchHint} ${app.switchHint}` : ''}
                 </div>
               </div>
               <div className="unused-actions">
+                <button className="btn" onClick={() => keepApp(app)} title={d.cleanupKeep}>
+                  {d.keep}
+                </button>
                 <button className="btn" onClick={() => api?.openLocation(app)}>
                   {d.openLocation}
                 </button>
-                <button className="btn primary" onClick={() => api?.openUninstall(app)}>
+                <button className="btn primary" onClick={() => setConfirmApp(app)}>
                   {d.openUninstall}
                 </button>
               </div>
@@ -450,10 +501,54 @@ export default function App() {
             onChange={(e) => patchSettings({ unusedDays: Number(e.target.value) || 14 })}
           />
 
+          <h3>{d.ignoredTitle}</h3>
+          {(settings.ignoredApps || []).length === 0 ? (
+            <p className="muted">{d.ignoredEmpty}</p>
+          ) : (
+            (settings.ignoredApps || []).map((item) => (
+              <div className="ignored-row" key={item.id}>
+                <span>{item.name}</span>
+                <button className="btn" onClick={() => restoreApp(item.id)}>
+                  {d.restore}
+                </button>
+              </div>
+            ))
+          )}
+
           <h3>{d.privacy}</h3>
           <p className="muted">{d.quitHint}</p>
         </section>
       )}
+
+      {confirmApp ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal">
+            <AppIcon src={icons[confirmApp.id]} name={confirmApp.name} size={48} />
+            <h2>{d.uninstallTitle}</h2>
+            <p>{d.uninstallBody.replace('{name}', confirmApp.name)}</p>
+            <ul>
+              <li>{d.uninstallIs}</li>
+              <li>{d.uninstallIsNot}</li>
+            </ul>
+            <p className="muted">{d.uninstallHow}</p>
+            <div className="actions">
+              <button className="btn" onClick={() => setConfirmApp(null)}>
+                {d.cancel}
+              </button>
+              <button
+                className="btn primary"
+                onClick={async () => {
+                  await api?.openUninstall(confirmApp)
+                  setNotice(d.uninstallOpened)
+                  setConfirmApp(null)
+                }}
+              >
+                {d.uninstallConfirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

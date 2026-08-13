@@ -20,6 +20,7 @@ export type TimeboardSettings = {
   tracking: boolean
   unusedDays: number
   seenTips?: boolean
+  ignoredApps?: Array<{ id: string; name: string }>
 }
 
 export type TimeboardNow = {
@@ -42,9 +43,11 @@ export type TimeboardUnused = {
     displayIcon?: string
     installLocation?: string
     path?: string
+    sizeKb?: number | null
   }>
   trackedApps: number
   inventoryCount: number
+  sizeTotalKb?: number
 }
 
 export type TimeboardIconReq = {

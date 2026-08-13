@@ -272,10 +272,11 @@ function switchedHint(switched, app) {
   return best
 }
 
-function unusedApps(store, inventory, { days = 14 } = {}) {
+function unusedApps(store, inventory, { days = 14, ignoredIds = [] } = {}) {
   const summary = store.summarize(Number(days) || 14)
   const usedPaths = new Set()
   const usedNames = new Set()
+  const ignored = new Set(ignoredIds || [])
   for (const app of summary.apps) {
     if (app.path) usedPaths.add(normPath(app.path))
     usedNames.add(String(app.name || '').toLowerCase())
@@ -284,6 +285,7 @@ function unusedApps(store, inventory, { days = 14 } = {}) {
   const switched = inventory.switched || {}
   const list = (inventory.apps || [])
     .filter((app) => {
+      if (ignored.has(app.id)) return false
       const loc = normPath(app.installLocation)
       const name = String(app.name || '').toLowerCase()
       if (name.includes('timeboard') || name.includes('windows-screentime')) return false
@@ -305,12 +307,19 @@ function unusedApps(store, inventory, { days = 14 } = {}) {
       ...app,
       switchHint: switchedHint(switched, app),
     }))
-    .sort((a, b) => a.switchHint - b.switchHint || String(a.name).localeCompare(String(b.name)))
+    .sort(
+      (a, b) =>
+        (Number(b.sizeKb) || 0) - (Number(a.sizeKb) || 0) ||
+        a.switchHint - b.switchHint ||
+        String(a.name).localeCompare(String(b.name)),
+    )
+  const sizeTotalKb = list.reduce((s, a) => s + (Number(a.sizeKb) || 0), 0)
   return {
     days,
     unused: list,
     trackedApps: summary.apps.length,
     inventoryCount: (inventory.apps || []).length,
+    sizeTotalKb,
   }
 }
 

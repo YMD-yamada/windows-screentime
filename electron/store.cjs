@@ -37,6 +37,7 @@ class TimeboardStore {
       tracking: true,
       unusedDays: 14,
       seenTips: false,
+      ignoredApps: [],
     }
   }
 

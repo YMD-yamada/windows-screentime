@@ -116,6 +116,66 @@ select:focus-visible {
   font-size: 13px;
 }
 
+.explain {
+  background: #f7f3ea;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.explain h2 { margin: 0 0 8px; font-size: 18px; }
+
+.explain p, .explain li {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.explain ul { margin: 8px 0 0; padding-left: 1.2em; }
+
+.notice {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 28, 26, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.modal {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 22px;
+  max-width: 480px;
+  width: min(480px, 100%);
+  box-shadow: var(--shadow);
+}
+
+.modal h2 { margin: 12px 0 8px; font-size: 20px; }
+
+.modal ul { padding-left: 1.2em; font-size: 14px; }
+
+.ignored-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
 .tabs {
   display: flex;
   gap: 8px;

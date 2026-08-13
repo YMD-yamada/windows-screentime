@@ -7,10 +7,10 @@ const {
   ipcMain,
   shell,
   dialog,
+  clipboard,
 } = require('electron')
 const path = require('path')
 const fs = require('fs')
-const { spawn } = require('child_process')
 const { TimeboardStore } = require('./store.cjs')
 const { Tracker, snapshotOnce, loadInstalledApps, unusedApps } = require('./tracker.cjs')
 const { IconCache } = require('./icons.cjs')
@@ -155,21 +155,24 @@ function registerIpc() {
     return { count: (inv.apps || []).length }
   })
   ipcMain.handle('tb:unused', async (_e, days) => {
+    const settings = store.readSettings()
     const inv = await loadInstalledApps(store)
-    return unusedApps(store, inv, { days: Number(days) || store.readSettings().unusedDays || 14 })
+    return unusedApps(store, inv, {
+      days: Number(days) || settings.unusedDays || 14,
+      ignoredIds: (settings.ignoredApps || []).map((a) => a.id || a),
+    })
   })
   ipcMain.handle('tb:openUninstall', async (_e, appInfo) => {
     if (!appInfo) return { ok: false }
-    if (appInfo.type === 'win32' && appInfo.uninstallOpen) {
+    if (appInfo.name) {
       try {
-        spawn(appInfo.uninstallOpen, { shell: true, detached: true, stdio: 'ignore' }).unref()
-        return { ok: true, method: 'uninstallString' }
+        clipboard.writeText(String(appInfo.name))
       } catch {
-        /* fall through */
+        /* ignore */
       }
     }
     await shell.openExternal('ms-settings:appsfeatures')
-    return { ok: true, method: 'settings' }
+    return { ok: true, method: 'settings', copiedName: appInfo.name || '' }
   })
   ipcMain.handle('tb:openLocation', async (_e, appInfo) => {
     const loc = appInfo?.installLocation || appInfo?.path || appInfo?.displayIcon || ''
