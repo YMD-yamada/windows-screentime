@@ -163,8 +163,16 @@ function registerIpc() {
     })
   })
   ipcMain.handle('tb:uninstall', async (_e, appInfo) => {
-    if (!appInfo) return { ok: false, error: 'no-app' }
-    const result = await runUninstall(appInfo)
+    if (!appInfo?.id) return { ok: false, error: 'no-app' }
+    let target = appInfo
+    try {
+      const inv = await loadInstalledApps(store)
+      const found = (inv.apps || []).find((a) => a.id === appInfo.id)
+      if (found) target = found
+    } catch {
+      /* use renderer payload as fallback */
+    }
+    const result = await runUninstall(target)
     if (result.ok) {
       try {
         await loadInstalledApps(store, { force: true })

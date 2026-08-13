@@ -1,7 +1,7 @@
 {
   "name": "windows-screentime",
   "productName": "Timeboard",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "Local-only Windows app usage time tracker (digital wellbeing). Not affiliated with Apple Screen Time.",
   "license": "MIT",

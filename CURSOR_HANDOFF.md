@@ -1,10 +1,10 @@
 # CURSOR_HANDOFF
 
-更新: 2026-08-13（v0.2.2 実アンインストール + 判断しやすい候補のみ）
+更新: 2026-08-13（v0.2.3 確認1回 + UAC1回でサイレント削除）
 
 ## Progress
 - リポ: https://github.com/YMD-yamada/windows-screentime
-- v0.2.2: 整理はスタートメニューアプリのみ。確認後 Timeboard が本体削除。ランタイム/ドライバ除外
+- v0.2.3: 整理は Timeboard 確認1回 → UAC1回 → サイレント本体削除
 - Release: https://github.com/YMD-yamada/windows-screentime/releases/latest
 - 法務: https://personal-site-taupe-gamma.vercel.app/apps/timeboard/
 - Microsoft Store: Partner Center 本人ログイン待ち

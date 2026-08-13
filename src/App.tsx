@@ -551,9 +551,9 @@ export default function App() {
                       setUnused((prev) => (prev || []).filter((a) => a.id !== confirmApp.id))
                       setConfirmApp(null)
                     } else {
-                      setNotice(
-                        d.uninstallFail.replace('{reason}', res?.error || ''),
-                      )
+                      const reason =
+                        res?.error === 'uac-cancelled' ? d.uacCancelled : res?.error || ''
+                      setNotice(d.uninstallFail.replace('{reason}', reason))
                     }
                   } finally {
                     setUninstalling(false)

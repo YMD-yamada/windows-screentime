@@ -98,7 +98,15 @@ async function main() {
       type: 'store',
       id: 'store|Contoso.Demo_1.0.0.0_neutral__8wekyb3d8bbwe',
     })
-    record('uninstall plan', msi?.kind === 'msi' && storeCmd?.kind === 'store', `${msi?.kind}+${storeCmd?.kind}`)
+    const nsis = buildUninstallCommand({
+      type: 'win32',
+      uninstall: 'C:\\Program Files\\Foo\\unins000.exe',
+    })
+    record(
+      'uninstall plan',
+      msi?.kind === 'msi' && storeCmd?.kind === 'store' && /verysilent/i.test(nsis?.command || ''),
+      `${msi?.kind}+${storeCmd?.kind}+silent`,
+    )
     const start = [{ name: 'Bambu Studio', appId: 'bambu' }]
     const keep = isJudgableUnused(
       { name: 'Bambu Studio', type: 'win32', uninstallOpen: 'C:\\x\\unins000.exe' },
