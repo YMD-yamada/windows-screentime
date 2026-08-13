@@ -7,13 +7,13 @@ const {
   ipcMain,
   shell,
   dialog,
-  clipboard,
 } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { TimeboardStore } = require('./store.cjs')
 const { Tracker, snapshotOnce, loadInstalledApps, unusedApps } = require('./tracker.cjs')
 const { IconCache } = require('./icons.cjs')
+const { runUninstall } = require('./uninstall.cjs')
 
 if (process.platform === 'win32') {
   app.setAppUserModelId('ymd.Timeboard')
@@ -162,17 +162,17 @@ function registerIpc() {
       ignoredIds: (settings.ignoredApps || []).map((a) => a.id || a),
     })
   })
-  ipcMain.handle('tb:openUninstall', async (_e, appInfo) => {
-    if (!appInfo) return { ok: false }
-    if (appInfo.name) {
+  ipcMain.handle('tb:uninstall', async (_e, appInfo) => {
+    if (!appInfo) return { ok: false, error: 'no-app' }
+    const result = await runUninstall(appInfo)
+    if (result.ok) {
       try {
-        clipboard.writeText(String(appInfo.name))
+        await loadInstalledApps(store, { force: true })
       } catch {
         /* ignore */
       }
     }
-    await shell.openExternal('ms-settings:appsfeatures')
-    return { ok: true, method: 'settings', copiedName: appInfo.name || '' }
+    return result
   })
   ipcMain.handle('tb:openLocation', async (_e, appInfo) => {
     const loc = appInfo?.installLocation || appInfo?.path || appInfo?.displayIcon || ''

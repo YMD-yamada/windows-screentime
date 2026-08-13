@@ -1,5 +1,6 @@
 const { spawn } = require('child_process')
 const path = require('path')
+const { isJudgableUnused } = require('./cleanup-filter.cjs')
 
 const HELPER = path.join(__dirname, 'helper.ps1')
 const INSTALLED = path.join(__dirname, 'installed-apps.ps1')
@@ -283,9 +284,11 @@ function unusedApps(store, inventory, { days = 14, ignoredIds = [] } = {}) {
     usedNames.add(String(app.exe || '').replace(/\.exe$/i, '').toLowerCase())
   }
   const switched = inventory.switched || {}
+  const startApps = inventory.startApps || []
   const list = (inventory.apps || [])
     .filter((app) => {
       if (ignored.has(app.id)) return false
+      if (!isJudgableUnused(app, startApps)) return false
       const loc = normPath(app.installLocation)
       const name = String(app.name || '').toLowerCase()
       if (name.includes('timeboard') || name.includes('windows-screentime')) return false

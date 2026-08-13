@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('timeboard', {
   setSettings: (patch) => ipcRenderer.invoke('tb:setSettings', patch),
   getNow: () => ipcRenderer.invoke('tb:now'),
   exportCsv: (range) => ipcRenderer.invoke('tb:exportCsv', range),
-  openUninstall: (app) => ipcRenderer.invoke('tb:openUninstall', app),
+  uninstall: (app) => ipcRenderer.invoke('tb:uninstall', app),
   openLocation: (app) => ipcRenderer.invoke('tb:openLocation', app),
   refreshInstalled: () => ipcRenderer.invoke('tb:refreshInstalled'),
   getIcons: (reqs) => ipcRenderer.invoke('tb:icons', reqs),

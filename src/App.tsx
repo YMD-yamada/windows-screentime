@@ -46,12 +46,15 @@ type UnusedApp = {
   name: string
   publisher?: string
   type?: string
+  uninstall?: string
   uninstallOpen?: string
   switchHint?: number
   displayIcon?: string
   installLocation?: string
   path?: string
   sizeKb?: number | null
+  packageFullName?: string
+  packageFamilyName?: string
 }
 
 function formatDuration(ms: number, lang: Lang) {
@@ -92,6 +95,7 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [confirmApp, setConfirmApp] = useState<UnusedApp | null>(null)
+  const [uninstalling, setUninstalling] = useState(false)
   const [notice, setNotice] = useState('')
 
   const lang = resolveLang(settings?.language || 'system')
@@ -532,18 +536,31 @@ export default function App() {
             </ul>
             <p className="muted">{d.uninstallHow}</p>
             <div className="actions">
-              <button className="btn" onClick={() => setConfirmApp(null)}>
+              <button className="btn" disabled={uninstalling} onClick={() => setConfirmApp(null)}>
                 {d.cancel}
               </button>
               <button
                 className="btn primary"
+                disabled={uninstalling}
                 onClick={async () => {
-                  await api?.openUninstall(confirmApp)
-                  setNotice(d.uninstallOpened)
-                  setConfirmApp(null)
+                  setUninstalling(true)
+                  try {
+                    const res = await api?.uninstall(confirmApp)
+                    if (res?.ok) {
+                      setNotice(d.uninstallOk.replace('{name}', confirmApp.name))
+                      setUnused((prev) => (prev || []).filter((a) => a.id !== confirmApp.id))
+                      setConfirmApp(null)
+                    } else {
+                      setNotice(
+                        d.uninstallFail.replace('{reason}', res?.error || ''),
+                      )
+                    }
+                  } finally {
+                    setUninstalling(false)
+                  }
                 }}
               >
-                {d.uninstallConfirm}
+                {uninstalling ? d.uninstalling : d.uninstallConfirm}
               </button>
             </div>
           </div>

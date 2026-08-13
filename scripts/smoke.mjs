@@ -15,6 +15,8 @@ const require = createRequire(import.meta.url)
 const { TimeboardStore } = require(path.join(root, 'electron/store.cjs'))
 const { snapshotOnce } = require(path.join(root, 'electron/tracker.cjs'))
 const { IconCache } = require(path.join(root, 'electron/icons.cjs'))
+const { buildUninstallCommand } = require(path.join(root, 'electron/uninstall.cjs'))
+const { isJudgableUnused } = require(path.join(root, 'electron/cleanup-filter.cjs'))
 
 const args = new Set(process.argv.slice(2))
 const skipBuild = args.has('--skip-build')
@@ -85,6 +87,34 @@ async function main() {
     record('extract icon', Boolean(url && url.startsWith('data:image/png')), url ? `${Math.round(url.length / 1024)}kb` : 'empty')
   } catch (e) {
     record('extract icon', false, e.message)
+  }
+
+  try {
+    const msi = buildUninstallCommand({
+      type: 'win32',
+      uninstallOpen: 'MsiExec.exe /I{12345678-1234-1234-1234-123456789012}',
+    })
+    const storeCmd = buildUninstallCommand({
+      type: 'store',
+      id: 'store|Contoso.Demo_1.0.0.0_neutral__8wekyb3d8bbwe',
+    })
+    record('uninstall plan', msi?.kind === 'msi' && storeCmd?.kind === 'store', `${msi?.kind}+${storeCmd?.kind}`)
+    const start = [{ name: 'Bambu Studio', appId: 'bambu' }]
+    const keep = isJudgableUnused(
+      { name: 'Bambu Studio', type: 'win32', uninstallOpen: 'C:\\x\\unins000.exe' },
+      start,
+    )
+    const dropRuntime = !isJudgableUnused(
+      { name: 'Microsoft Visual C++ 2015 Redistributable (x64)', type: 'win32', uninstallOpen: 'msiexec' },
+      start,
+    )
+    const dropHidden = !isJudgableUnused(
+      { name: 'Mystery Helper', type: 'win32', uninstallOpen: 'C:\\x\\unins000.exe' },
+      start,
+    )
+    record('judgable filter', keep && dropRuntime && dropHidden, `keep=${keep} runtime=${dropRuntime} hidden=${dropHidden}`)
+  } catch (e) {
+    record('uninstall plan', false, e.message)
   }
 
   if (!skipBuild) {

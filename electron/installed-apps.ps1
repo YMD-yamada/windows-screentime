@@ -49,9 +49,22 @@ Get-AppxPackage -ErrorAction SilentlyContinue |
       version           = [string]$_.Version
       type              = 'store'
       packageFamilyName = [string]$_.PackageFamilyName
+      packageFullName   = [string]$_.PackageFullName
       installLocation   = [string]$_.InstallLocation
     }) | Out-Null
   }
+
+$startApps = New-Object System.Collections.Generic.List[object]
+try {
+  Get-StartApps -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_.Name) {
+      $startApps.Add([ordered]@{
+        name  = [string]$_.Name
+        appId = [string]$_.AppID
+      }) | Out-Null
+    }
+  }
+} catch {}
 
 $switched = @{}
 $swPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppSwitched'
@@ -72,5 +85,6 @@ $result = [ordered]@{
   capturedAt = [DateTimeOffset]::Now.ToString('o')
   apps       = $apps
   switched   = $switched
+  startApps  = $startApps
 }
 $result | ConvertTo-Json -Compress -Depth 6
